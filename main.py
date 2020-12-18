@@ -11,6 +11,22 @@ COMMIT_MESSAGE = 'message'
 COMMIT_CHANGE_ID = 'change_id'
 
 
+def _print_red_log(message):
+    print("\033[0;31m%s\033[0m" % message)
+
+
+def _print_green_log(message):
+    print("\033[0;32m%s\033[0m" % message)
+
+
+def _print_yellow_log(message):
+    print("\033[0;33m%s\033[0m" % message)
+
+
+def _print_normal_log(message):
+    print(message)
+
+
 def git_log(branch_name):
     git_commit_fields = [COMMIT_ID, COMMIT_AUTHOR_NAME, COMMIT_AUTHOR_EMAIL, COMMIT_DATE, COMMIT_MESSAGE, COMMIT_BODY]
     git_log_command = 'git --no-pager log ' + branch_name + ' --format="%H%x1f%an%x1f%ae%x1f%ad%x1f%s%x1f%b%x1e"'
@@ -55,10 +71,14 @@ for row in log2:
 print(len(changeId2))
 
 diff_list = list(set(changeId1).difference(set(changeId2)))
-# print (diff_list)
 
+print("\033[0;33m%s\033[0m" % "输出红色字符")
 print("                               commit id" + " - " + "changeId                        ")
 for diff in diff_list:
     for row in log1:
         if row.get(COMMIT_CHANGE_ID) == diff:
-            print(row[COMMIT_ID] + " - " + row[COMMIT_CHANGE_ID])
+            # print(row[COMMIT_ID] + " - " + row[COMMIT_CHANGE_ID])
+            _print_yellow_log(row[COMMIT_ID] + " - " + row[COMMIT_CHANGE_ID])
+
+
+
