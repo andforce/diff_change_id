@@ -11,16 +11,20 @@ COMMIT_MESSAGE = 'message'
 COMMIT_CHANGE_ID = 'change_id'
 
 
-def _red_log(message):
-    return "\033[0;31m%s\033[0m" % message
+def _red_log(msg):
+    return _color_log('31', msg)
 
 
-def _green_log(message):
-    return "\033[0;32m%s\033[0m" % message
+def _green_log(msg):
+    return _color_log('32', msg)
 
 
-def _yellow_log(message):
-    return "\033[0;33m%s\033[0m" % message
+def _yellow_log(msg):
+    return _color_log('33', msg)
+
+
+def _color_log(color, msg):
+    return "\033[0;%sm%s\033[0m" % (color, msg)
 
 
 def git_log(branch_name):
@@ -50,55 +54,50 @@ def git_log(branch_name):
     return logs
 
 
-log1 = git_log(sys.argv[1])
-changeId1 = []
-for row in log1:
-    if row.get(COMMIT_CHANGE_ID) != 'NOT_FIND':
-        changeId1.append(row.get(COMMIT_CHANGE_ID))
+def git_log_with_diff_change_ids(branch):
+    git_logs = git_log(branch)
+    diff_change_ids = []
+    for row in git_logs:
+        if row.get(COMMIT_CHANGE_ID) != 'NOT_FIND':
+            diff_change_ids.append(row.get(COMMIT_CHANGE_ID))
+    return git_logs, diff_change_ids
 
-log2 = git_log(sys.argv[2])
-changeId2 = []
-for row in log2:
-    if row.get(COMMIT_CHANGE_ID) != 'NOT_FIND':
-        changeId2.append(row.get(COMMIT_CHANGE_ID))
 
-print("branch " + _yellow_log(sys.argv[1]) + " have " + str(len(log1)) + " commits, " + "branch " + _yellow_log(
-    sys.argv[2]) + " have " + str(len(log2)) + " commits.")
+(branch1_git_logs, br1_change_ids) = git_log_with_diff_change_ids(sys.argv[1])
 
-# IN changeId1, BUT NOT IN changeId2
-diff_list = list(set(changeId1).difference(set(changeId2)))
-# resort by git log
-diff_list.sort(key=changeId1.index)
-if len(diff_list) == 0:
-    print(_green_log('All patches in branch ') + _yellow_log(sys.argv[1]) + _green_log(
-        ' are already in branch ') + _yellow_log(sys.argv[2]))
-else:
-    if len(diff_list) == 1:
-        print(_red_log("there is ") + str(len(diff_list)) + _red_log(" patch that belong ") + _yellow_log(
-            sys.argv[1]) + _red_log(" is NOT in ") + _yellow_log(sys.argv[2]))
+(branch2_git_logs, br2_change_ids) = git_log_with_diff_change_ids(sys.argv[2])
+
+print("branch " + _yellow_log(sys.argv[1]) + " have " + str(
+    len(branch1_git_logs)) + " commits, " + "branch " + _yellow_log(
+    sys.argv[2]) + " have " + str(len(branch2_git_logs)) + " commits.")
+
+
+def _print_diff_patch(git_logs, change_id_list):
+    for change_id in change_id_list:
+        for log in git_logs:
+            if log.get(COMMIT_CHANGE_ID) == change_id:
+                print(_yellow_log(log[COMMIT_ID]) + "  " + log[COMMIT_DATE] + "  " + log[COMMIT_AUTHOR_EMAIL] + "\t " +
+                      log[COMMIT_MESSAGE])
+
+
+def print_diff(branch1, br1_git_logs, br1_change_ids, branch2, br2_git_logs, br2_change_ids):
+    # IN br1_git_logs, BUT NOT IN br2_change_ids
+    diff_change_ids = list(set(br1_change_ids).difference(set(br2_change_ids)))
+    # resort by br1_change_ids
+    diff_change_ids.sort(key=br1_change_ids.index)
+    diff_len = len(diff_change_ids)
+    if diff_len == 0:
+        print(_green_log('All patches in branch ') + _yellow_log(branch1) + _green_log(
+            ' are already in branch ') + _yellow_log(branch2))
     else:
-        print(_red_log("there are ") + str(len(diff_list)) + _red_log(" patches that belong ") + _yellow_log(
-            sys.argv[1]) + _red_log(" are NOT in ") + _yellow_log(sys.argv[2]))
-    for diff in diff_list:
-        for row in log1:
-            if row.get(COMMIT_CHANGE_ID) == diff:
-                print(_yellow_log(row[COMMIT_ID]) + " " + row[COMMIT_DATE] + " " + row[COMMIT_MESSAGE])
+        there_ = "there is " if (diff_len == 1) else "there are "
+        patch_ = " patch that belong " if (diff_len == 1) else " patches that belong "
+        not_ = " is NOT in " if (diff_len == 1) else " are NOT in "
+        print(_red_log(there_) + str(diff_len) + _red_log(patch_)
+              + _yellow_log(branch1) + _red_log(not_) + _yellow_log(branch2))
+        _print_diff_patch(br1_git_logs, diff_change_ids)
 
-# IN changeId2, BUT NOT IN changeId2
-diff_list = list(set(changeId2).difference(set(changeId1)))
-# resort by git log
-diff_list.sort(key=changeId2.index)
-if len(diff_list) == 0:
-    print(_green_log('All patches in branch ') + _yellow_log(sys.argv[2]) + _green_log(
-        ' are already in branch ') + _yellow_log(sys.argv[1]))
-else:
-    if len(diff_list) == 1:
-        print(_red_log("there is ") + str(len(diff_list)) + _red_log(" patch that belong ") + _yellow_log(
-            sys.argv[2]) + _red_log(" is NOT in ") + _yellow_log(sys.argv[1]))
-    else:
-        print(_red_log("there are ") + str(len(diff_list)) + _red_log(" patches that belong ") + _yellow_log(
-            sys.argv[2]) + _red_log(" are NOT in ") + _yellow_log(sys.argv[1]))
-    for diff in diff_list:
-        for row in log2:
-            if row.get(COMMIT_CHANGE_ID) == diff:
-                print(_yellow_log(row[COMMIT_ID]) + " " + row[COMMIT_DATE] + " " + row[COMMIT_MESSAGE])
+
+print_diff(sys.argv[1], branch1_git_logs, br1_change_ids, sys.argv[2], branch2_git_logs, br2_change_ids)
+
+print_diff(sys.argv[2], branch2_git_logs, br2_change_ids, sys.argv[1], branch1_git_logs, br1_change_ids)
